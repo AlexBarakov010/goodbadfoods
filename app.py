@@ -143,7 +143,10 @@ ALLERGENS = [
 ]
 def preprocess_image(image):
     img = np.array(image)
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    if len(img.shape) == 2:
+        gray = img
+    else:
+        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     gray = cv2.resize(gray, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
     blur = cv2.GaussianBlur(gray, (3, 3), 0)
     thresh = cv2.adaptiveThreshold(
@@ -220,13 +223,13 @@ def calculate_score(found_items, harmful_items):
 def get_health_label(score):
     if score == 0:
         return "🟢 Healthy"
-    elif score <= 4:
+    if score <= 4:
         return "🟡 Moderate"
     return "🔴 Unhealthy"
 def risk_color(risk):
     if risk == 1:
         return "🟢"
-    elif risk == 2:
+    if risk == 2:
         return "🟡"
     return "🔴"
 st.title("🧪 AI Ingredient Scanner")
@@ -238,55 +241,78 @@ Scan food labels and detect:
 - Artificial sweeteners
 - Preservatives
 """)
-uploaded_file = st.file_uploader("📤 Upload food label image", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader(
+    "📤 Upload food label image",
+    type=["jpg", "jpeg", "png"]
+)
 if uploaded_file:
-    image = Image.open(uploaded_file)
-    st.image(image, caption="Uploaded Image", use_container_width=True)
+    image = Image.open(uploaded_file).convert("RGB")
+    st.image(
+        image,
+        caption="Uploaded Image",
+        use_container_width=True
+    )
     st.write("🔍 Processing image...")
     processed = preprocess_image(image)
-    results = reader.readtext(processed, detail=1, paragraph=True)
-    extracted_text = ""
-    for detection in results:
-        bbox, text, confidence = detection
-        if confidence > 0.35:
-            extracted_text += " " + text
-    st.subheader("📄 Extracted Text")
-    st.text_area("", extracted_text, height=200)
-    found_ingredients = detect_ingredients(extracted_text)
-    harmful_found = detect_harmful(extracted_text)
-    allergens_found = detect_allergens(extracted_text)
-    score = calculate_score(found_ingredients, harmful_found)
-    label = get_health_label(score)
-    st.subheader("🧪 Analysis Result")
-    st.markdown(f"## {label}")
-    st.markdown(f"### Health Score: {score}")
-    if found_ingredients:
-        st.subheader("⚠️ Detected Additives")
-        for item in found_ingredients:
-            data = INGREDIENT_DATABASE[item]
-            color = risk_color(data["risk"])
-            st.markdown(f"""
+    try:
+        results = reader.readtext(
+            processed,
+            detail=1,
+            paragraph=True
+        )
+        extracted_text = ""
+        for detection in results:
+            if isinstance(detection, (list, tuple)) and len(detection) >= 3:
+                bbox, text, confidence = detection[:3]
+                if isinstance(confidence, (int, float)) and confidence > 0.35:
+                    extracted_text += " " + str(text)
+        st.subheader("📄 Extracted Text")
+        st.text_area(
+            "",
+            extracted_text,
+            height=200
+        )
+        found_ingredients = detect_ingredients(extracted_text)
+        harmful_found = detect_harmful(extracted_text)
+        allergens_found = detect_allergens(extracted_text)
+        score = calculate_score(
+            found_ingredients,
+            harmful_found
+        )
+        label = get_health_label(score)
+        st.subheader("🧪 Analysis Result")
+        st.markdown(f"## {label}")
+        st.markdown(f"### Health Score: {score}")
+        if found_ingredients:
+            st.subheader("⚠️ Detected Additives")
+            for item in found_ingredients:
+                data = INGREDIENT_DATABASE[item]
+                color = risk_color(data["risk"])
+                st.markdown(f"""
 {color} **{item} — {data['en']}**
 - 🇧🇬 {data['bg']}
 - Category: {data['category']}
 - Risk Level: {data['risk']}/3
 - ℹ️ {data['info_en']}
 """)
-    if harmful_found:
-        st.subheader("🚨 Harmful Ingredients")
-        for item in harmful_found:
-            data = HARMFUL_INGREDIENTS[item]
-            color = risk_color(data["risk"])
-            st.markdown(f"""
+        if harmful_found:
+            st.subheader("🚨 Harmful Ingredients")
+            for item in harmful_found:
+                data = HARMFUL_INGREDIENTS[item]
+                color = risk_color(data["risk"])
+                st.markdown(f"""
 {color} **{item.title()}**
 - Risk Level: {data['risk']}/3
 - ℹ️ {data['info']}
 """)
-    if allergens_found:
-        st.subheader("🥜 Allergens Detected")
-        for allergen in allergens_found:
-            st.warning(f"⚠️ {allergen}")
-    if not found_ingredients and not harmful_found and not allergens_found:
-        st.success("✅ No dangerous ingredients detected.")
+        if allergens_found:
+            st.subheader("🥜 Allergens Detected")
+
+            for allergen in allergens_found:
+                st.warning(f"⚠️ {allergen}")
+        if not found_ingredients and not harmful_found and not allergens_found:
+            st.success("✅ No dangerous ingredients detected.")
+    except Exception as e:
+        st.error(f"Error processing image: {e}")
 st.markdown("---")
 st.caption("AI Ingredient Scanner • BG + EN OCR Support")
