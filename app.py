@@ -5,11 +5,7 @@ from PIL import Image
 import cv2
 import re
 from rapidfuzz import fuzz
-st.set_page_config(
-    page_title="AI Ingredient Scanner",
-    page_icon="🧪",
-    layout="centered"
-)
+st.set_page_config(page_title="AI Ingredient Scanner", page_icon="🧪", layout="centered")
 @st.cache_resource
 def load_reader():
     return easyocr.Reader(['bg', 'en'])
@@ -22,11 +18,7 @@ INGREDIENT_DATABASE = {
         "category": "Sweetener",
         "info_en": "Artificial sweetener",
         "info_bg": "Изкуствен подсладител",
-        "aliases": [
-            "acesulfame k",
-            "ацесулфам",
-            "ацесулфам к"
-        ]
+        "aliases": ["acesulfame k", "ацесулфам", "ацесулфам к"]
     },
     "E951": {
         "en": "Aspartame",
@@ -35,10 +27,7 @@ INGREDIENT_DATABASE = {
         "category": "Sweetener",
         "info_en": "Artificial sweetener",
         "info_bg": "Изкуствен подсладител",
-        "aliases": [
-            "aspartame",
-            "аспартам"
-        ]
+        "aliases": ["aspartame", "аспартам"]
     },
     "E955": {
         "en": "Sucralose",
@@ -47,10 +36,7 @@ INGREDIENT_DATABASE = {
         "category": "Sweetener",
         "info_en": "Artificial sweetener",
         "info_bg": "Изкуствен подсладител",
-        "aliases": [
-            "sucralose",
-            "сукралоза"
-        ]
+        "aliases": ["sucralose", "сукралоза"]
     },
     "E621": {
         "en": "Monosodium Glutamate",
@@ -59,11 +45,7 @@ INGREDIENT_DATABASE = {
         "category": "Flavor Enhancer",
         "info_en": "Flavor enhancer",
         "info_bg": "Подобрител на вкуса",
-        "aliases": [
-            "msg",
-            "monosodium glutamate",
-            "мононатриев глутамат"
-        ]
+        "aliases": ["msg", "monosodium glutamate", "мононатриев глутамат"]
     },
     "E210": {
         "en": "Benzoic Acid",
@@ -72,10 +54,7 @@ INGREDIENT_DATABASE = {
         "category": "Preservative",
         "info_en": "May cause allergic reactions",
         "info_bg": "Може да предизвика алергични реакции",
-        "aliases": [
-            "benzoic acid",
-            "бензоена киселина"
-        ]
+        "aliases": ["benzoic acid", "бензоена киселина"]
     },
     "E220": {
         "en": "Sulfur Dioxide",
@@ -84,10 +63,7 @@ INGREDIENT_DATABASE = {
         "category": "Preservative",
         "info_en": "May trigger asthma reactions",
         "info_bg": "Може да предизвика астматични реакции",
-        "aliases": [
-            "sulfur dioxide",
-            "серен диоксид"
-        ]
+        "aliases": ["sulfur dioxide", "серен диоксид"]
     },
     "E250": {
         "en": "Sodium Nitrite",
@@ -96,10 +72,7 @@ INGREDIENT_DATABASE = {
         "category": "Preservative",
         "info_en": "Linked to cancer risk",
         "info_bg": "Свързан с риск от рак",
-        "aliases": [
-            "sodium nitrite",
-            "натриев нитрит"
-        ]
+        "aliases": ["sodium nitrite", "натриев нитрит"]
     },
     "E320": {
         "en": "BHA",
@@ -108,9 +81,7 @@ INGREDIENT_DATABASE = {
         "category": "Antioxidant",
         "info_en": "Possible carcinogen",
         "info_bg": "Възможен канцероген",
-        "aliases": [
-            "bha"
-        ]
+        "aliases": ["bha"]
     },
     "E321": {
         "en": "BHT",
@@ -119,9 +90,7 @@ INGREDIENT_DATABASE = {
         "category": "Antioxidant",
         "info_en": "Linked to hormonal issues",
         "info_bg": "Свързан с хормонални нарушения",
-        "aliases": [
-            "bht"
-        ]
+        "aliases": ["bht"]
     }
 }
 HARMFUL_INGREDIENTS = {
@@ -175,13 +144,7 @@ ALLERGENS = [
 def preprocess_image(image):
     img = np.array(image)
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    gray = cv2.resize(
-        gray,
-        None,
-        fx=2,
-        fy=2,
-        interpolation=cv2.INTER_CUBIC
-    )
+    gray = cv2.resize(gray, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
     blur = cv2.GaussianBlur(gray, (3, 3), 0)
     thresh = cv2.adaptiveThreshold(
         blur,
@@ -214,10 +177,7 @@ def normalize_e_number(e):
     return e
 def detect_e_numbers(text):
     found = []
-    e_matches = re.findall(
-        r'[Ee][\s\-\.]?\d{3}',
-        text
-    )
+    e_matches = re.findall(r'[Ee][\s\-\.]?\d{3}', text)
     for e in e_matches:
         e_clean = normalize_e_number(e)
         if e_clean in INGREDIENT_DATABASE:
@@ -229,10 +189,7 @@ def detect_ingredients(text):
     found.extend(detect_e_numbers(text))
     for code, data in INGREDIENT_DATABASE.items():
         for alias in data["aliases"]:
-            score = fuzz.partial_ratio(
-                alias.lower(),
-               text
-            )
+            score = fuzz.partial_ratio(alias.lower(), text)
             if score > 85:
                 found.append(code)
                 break
@@ -241,10 +198,7 @@ def detect_harmful(text):
     text = normalize_text(text)
     found = []
     for ingredient in HARMFUL_INGREDIENTS:
-        score = fuzz.partial_ratio(
-            ingredient,
-            text
-        )
+        score = fuzz.partial_ratio(ingredient, text)
         if score > 85:
             found.append(ingredient)
     return list(set(found))
@@ -252,10 +206,7 @@ def detect_allergens(text):
     text = normalize_text(text)
     found = []
     for allergen in ALLERGENS:
-        score = fuzz.partial_ratio(
-            allergen,
-            text
-        )
+        score = fuzz.partial_ratio(allergen, text)
         if score > 85:
             found.append(allergen)
     return list(set(found))
@@ -271,7 +222,7 @@ def get_health_label(score):
         return "🟢 Healthy"
     elif score <= 4:
         return "🟡 Moderate"
-    return "🔴 Unhealthy
+    return "🔴 Unhealthy"
 def risk_color(risk):
     if risk == 1:
         return "🟢"
@@ -287,42 +238,24 @@ Scan food labels and detect:
 - Artificial sweeteners
 - Preservatives
 """)
-uploaded_file = st.file_uploader(
-    "📤 Upload food label image",
-    type=["jpg", "jpeg", "png"]
-)
+uploaded_file = st.file_uploader("📤 Upload food label image", type=["jpg", "jpeg", "png"])
 if uploaded_file:
     image = Image.open(uploaded_file)
-    st.image(
-        image,
-        caption="Uploaded Image",
-        use_container_width=True
-    )
+    st.image(image, caption="Uploaded Image", use_container_width=True)
     st.write("🔍 Processing image...")
     processed = preprocess_image(image)
-    results = reader.readtext(
-        processed,
-        detail=1,
-        paragraph=True
-    )
+    results = reader.readtext(processed, detail=1, paragraph=True)
     extracted_text = ""
     for detection in results:
         bbox, text, confidence = detection
         if confidence > 0.35:
             extracted_text += " " + text
     st.subheader("📄 Extracted Text")
-    st.text_area(
-        "",
-        extracted_text,
-        height=200
-    )
+    st.text_area("", extracted_text, height=200)
     found_ingredients = detect_ingredients(extracted_text)
     harmful_found = detect_harmful(extracted_text)
     allergens_found = detect_allergens(extracted_text)
-    score = calculate_score(
-        found_ingredients,
-        harmful_found
-    )
+    score = calculate_score(found_ingredients, harmful_found)
     label = get_health_label(score)
     st.subheader("🧪 Analysis Result")
     st.markdown(f"## {label}")
@@ -353,13 +286,7 @@ if uploaded_file:
         st.subheader("🥜 Allergens Detected")
         for allergen in allergens_found:
             st.warning(f"⚠️ {allergen}")
-    if (
-        not found_ingredients and
-        not harmful_found and
-        not allergens_found
-    ):
-        st.success(
-            "✅ No dangerous ingredients detected."
-        )
+    if not found_ingredients and not harmful_found and not allergens_found:
+        st.success("✅ No dangerous ingredients detected.")
 st.markdown("---")
 st.caption("AI Ingredient Scanner • BG + EN OCR Support")
